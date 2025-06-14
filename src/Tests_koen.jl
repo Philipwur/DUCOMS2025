@@ -63,8 +63,43 @@ function initial_conditions(params::SWEParameters)
 end
 
 
-function set_periodic_bc(h, q)
-    
+function set_periodic_bc(a)
+    ab = push(a[end], a)
+    push!(ab, a[1])
+
+    return ab
+end
+
+# Minmod slope limiter
+function minmod(a, b)
+    result = similar(a)
+    for i in eachindex(a)
+        if a[i] * b[i] <= 0
+            result[i] = 0.0
+        else
+            result[i] = sign(a[i]) * min(abs(a[i]), abs(b[i]))
+        end
+    end
+    return result
+end
+
+# MUSCL reconstruction
+function muscl_reconstruct(U::Array{Float64,2})
+    # Assume U is size (num_vars, N)
+    U_forward  = circshift(U, (0, -1))  # Shift left
+    U_backward = circshift(U, (0, 1))   # Shift right
+
+    delta_plus  = U_forward .- U
+    delta_minus = U .- U_backward
+
+    slope = minmod(delta_plus, delta_minus)
+
+    U_L = U .- 0.5 .* slope
+    U_R = U .+ 0.5 .* slope
+
+    return U_L, U_R
+end
+
 
 # --- 3. DAE residual function ---
 # Note: the "!" at the end of the function name indicates that the function modifies 
@@ -83,6 +118,11 @@ function swe_dae_residual!(residual, du, u, p::SWEParameters, t)
 
     # calculate residual, mind boundary conditions
     # ...
+    hb = set_periodic_bc(h)
+    qb = set_periodic_bc(q)
+    Ub = [hb, qb]
+
+    U_muscl = muscl_reconstruct(U)
 
 
 
