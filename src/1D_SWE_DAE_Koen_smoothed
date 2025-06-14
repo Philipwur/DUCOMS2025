@@ -128,6 +128,67 @@ end
 # --- 3. DAE residual function ---
 # Note: the "!" at the end of the function name indicates that the function modifies 
 # its arguments (convention in Julia)
+
+# Minmod slope limiter
+function minmod(a, b)
+    result = similar(a)
+    for i in eachindex(a)
+        if a[i] * b[i] <= 0
+            result[i] = 0.0
+        else
+            result[i] = sign(a[i]) * min(abs(a[i]), abs(b[i]))
+        end
+    end
+    return result
+end
+
+# MUSCL reconstruction
+function muscl_reconstruct(U::Array{Float64,2})
+    # Assume U is size (num_vars, N)
+    U_forward  = circshift(U, (0, -1))  # Shift left
+    U_backward = circshift(U, (0, 1))   # Shift right
+
+    delta_plus  = U_forward .- U
+    delta_minus = U .- U_backward
+
+    slope = minmod(delta_plus, delta_minus)
+
+    U_L = U .- 0.5 .* slope
+    U_R = U .+ 0.5 .* slope
+
+    return U_L, U_R
+end
+
+function flux(U::Array{Float64,2}, p::SWEParameters)
+    h, q = eachcol(U)
+    u = q ./ h
+    return [q, q .* u + 0.5 .* p.g .* h.^2]
+end
+
+# Rusanov (local Lax-Friedrichs) numerical flux
+function rusanov_flux(U_L::Array{Float64,2}, U_R::Array{Float64,2}, p::SWEParameters)
+    h_L, q_L = eachcol(U_L)
+    h_R, q_R = eachcol(U_R)
+    u_L = q_L ./ h_L
+    u_R = q_R ./ h_R
+
+
+    c_L = sqrt.(p.g .* h_L)
+    c_R = sqrt.(p.g .* h_R)
+
+    s_max = max(abs.(u_L) .+ c_L, abs.(u_R) .+ c_R)
+
+
+    F_L = flux(U_L, p)
+    F_R = flux(U_R, p)
+    a = 0.5 .* (F_L .+ F_R)
+    a = [a[1] a[2]]
+    #a = transpose(a)
+    b = 0.5 .* s_max .* (U_R .- U_L)
+    res = a .- b
+    return res
+end
+
 function swe_dae_residual!(residual, du, u, p::SWEParameters, t)
     N = p.N
     h = @view u[1:N]
@@ -149,6 +210,10 @@ function swe_dae_residual!(residual, du, u, p::SWEParameters, t)
         ζ_ext = h_ext .+ zb_ext
 
         
+        # MUSCL + RK2
+        U_L, U_R = muscl_reconstruct([h_ext q_ext])
+        flux = rusanov_flux(U_L, U_R, p)
+
         # Spatial derivatives (central difference)
         dqdx = @. (q_ext[3:end] - q_ext[1:end-2]) / (2Δx)
         residual[1:N] .= dhdt .+ dqdx
@@ -180,7 +245,14 @@ function swe_dae_residual!(residual, du, u, p::SWEParameters, t)
         # convective term ∂/∂x (q²/h)
         q2_over_h = @. q_ext[2:end-1]^2 / h_ext[2:end-1]
         q2_over_h_ext = [q2_over_h[1]; q2_over_h; q2_over_h[end]]  # Neumann-like
-        dfluxdx = @. (q2_over_h_ext[3:end] - q2_over_h_ext[1:end-2]) / (2Δx)
+
+        # MUSCL + RK2
+        U_L, U_R = muscl_reconstruct([h_ext q_ext])
+        flux = rusanov_flux(U_L, U_R, p)
+
+        dfluxdx = @. flux[2:201]/Δx
+
+        #dfluxdx = @. (q2_over_h_ext[3:end] - q2_over_h_ext[1:end-2]) / (2Δx)
 
         # surface gradient ∂ζ/∂x
         dzetadx = @. (ζ_ext[3:end] - ζ_ext[1:end-2]) / (2Δx)
