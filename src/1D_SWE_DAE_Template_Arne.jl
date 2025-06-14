@@ -78,6 +78,25 @@ function plot_solution(h, q, params::SWEParameters, filename=nothing)
     
 end
 
+function animate_solution(h_all, q_all, params::SWEParameters; 
+                          filename::String="swe_animation.gif", 
+                          framerate::Int=20,
+                          skip::Int=1)
+    @assert size(h_all) == size(q_all) "h and q must have the same shape"
+
+    nt, N = size(h_all)
+    @assert N == params.N "Mismatch in spatial dimension"
+
+    anim = @animate for i in 1:skip:nt
+        h = view(h_all, i, :)
+        q = view(q_all, i, :)
+        framefile = tempname() * ".png"
+        plot_solution(h, q, params, framefile)
+    end
+
+    gif(anim, filename, fps=framerate)
+end
+
 
 # --- 2. Initial condition ---
 function initial_conditions(params::SWEParameters)
