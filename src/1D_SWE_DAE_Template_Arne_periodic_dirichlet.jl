@@ -37,8 +37,10 @@ function generate_grid(N, xspan)
 end
 
 function bed_profile(x, use_wavy_bed, D)
+    
     N = length(x)
     zb = -D .* ones(N)
+    
     if use_wavy_bed
         zb .+= 0.4 .* sin.(2π .* x .* (N - 1) ./ (N * (x[end] - x[1]) * 5))
     end
@@ -109,6 +111,7 @@ function animate_solution(h_all, q_all, params::SWEParameters;
                           filename::String="swe_animation.gif", 
                           framerate::Int=20,
                           skip::Int=1)
+
     @assert size(h_all) == size(q_all) "h and q must have the same shape"
 
     nt, N = size(h_all)
@@ -129,6 +132,7 @@ end
 # Note: the "!" at the end of the function name indicates that the function modifies 
 # its arguments (convention in Julia)
 function swe_dae_residual!(residual, du, u, p::SWEParameters, t)
+    
     N = p.N
     h = @view u[1:N]
     q = @view u[N+1:2N]
@@ -162,6 +166,7 @@ function swe_dae_residual!(residual, du, u, p::SWEParameters, t)
         friction = @. p.cf * q .* abs(q) / h.^2
 
         residual[N+1:2N] .= dqdt .+ dfluxdx .+ p.g .* h .* dzetadx .+ friction
+    
     elseif p.bc_type == :dirichlet_neumann
         # Prescribed BCs
         qL = p.prescribed_inlet_discharge(t)
