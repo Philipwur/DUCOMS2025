@@ -51,6 +51,34 @@ function make_parameters(; N=200, xspan=(0.0, 5.0), D=10.0, g=9.81, cf=0.003,
     return SWEParameters(g, cf, N, xspan, tstart, tstop, D, use_wavy_bed, bc_type, x, zb)
 end
 
+
+function plot_solution(h, q, params::SWEParameters, filename=nothing)
+    if isnothing(filename)
+        filename = "plot.png"
+    end
+
+    N = params.N
+    x = params.x
+    zb = params.zb
+
+    ζ = h .+ zb
+
+    # Top plot: zeta and zb
+    p1 = plot(x, ζ; label="ζ(x)", xlabel="x", ylabel="Surface Level", lw=2)
+    plot!(p1, x, zb; label="zb(x)", lw=1, color=:gray)
+
+    # Bottom plot: discharge
+    p2 = plot(x, q; label="q(x)", xlabel="x", ylabel="Discharge", lw=2)
+
+    final_plot = plot(p1, p2; layout=(2,1), size=(800,600))
+
+    savefig(final_plot, filename)
+
+    return final_plot
+    
+end
+
+
 # --- 2. Initial condition ---
 function initial_conditions(params::SWEParameters)
     xmin, xmax = params.xspan
