@@ -1,4 +1,4 @@
-# DUCOMS2025
+# DUCOMS 2025
 
 Lets get this bread $\epsilon$^:
 
