@@ -1,14 +1,8 @@
-# DUCOMS 2025
+# CScNL hackathon 2025, team QAIMS
 
-Lets get this bread $\epsilon$^:
+Direct implementation of solver: `src/main_without_smoothing.jl`
 
-Lets get this test :D!
+Implementation with added MUSCL (Monotonic upstream-centered schemes for conservation laws) and Rusanov-flux: `src/main_with_smoothing.jl`
 
+Example animations in folder `results/`
 
-## Options for residual calculation (LLM):
-Note: needs to be second order accurate!
-
-- Finite Volume Method (FVM) + MUSCL +RK2
-- DG + RK2
-- Roe + MUSCL + RK2
-- MOL
