@@ -62,6 +62,10 @@ function initial_conditions(params::SWEParameters)
     return h, q
 end
 
+
+function set_periodic_bc(h, q)
+    
+
 # --- 3. DAE residual function ---
 # Note: the "!" at the end of the function name indicates that the function modifies 
 # its arguments (convention in Julia)
